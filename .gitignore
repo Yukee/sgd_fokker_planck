@@ -1,0 +1,11 @@
+# Ignore subfolders
+*.da
+.DS_Store
+lab_notebook/
+**pycache**
+**checkpoint**
+*.pyc
+primer/
+*.dat
+**checkpoint**
+*.pyc
