@@ -7,9 +7,18 @@ import numpy as np
 
 def get_coeffs(q, print_func=False):
     """
-    q: function of w (learned variable) and w0 (fixed, free parameter)
+    Return the convection and diffusion coefficients (eq 12) as sympy objects
+
+    q: function of w (learned variable)
+    Can optionally be a function of:
+    
+    w0: fixed, free parameter
+    v: variance of the x variable
+    ve: variance of the noise term
+    lr: learning rate
+    b: batch size
     """
-    w, w0, v, ve, l, b = sym.symbols('w w0 v ve l b')
+    w, w0, v, ve, l, b = sym.symbols('w w0 v ve lr b')
     N = CoordSys3D('N')
     grad_q = sym.diff(q, w)
     h = -l*v*q*grad_q
@@ -22,11 +31,25 @@ def get_coeffs(q, print_func=False):
         display("diffusion term:", d2)
     return lambdify((l, v, ve, w0, b, w), convection), lambdify((l, v, ve, w0, b, w), d2)
 
-def run(q, nw, lr, v, ve, w0, b, L, dt, steps, w_left, w_right, zero_prob_left, zero_prob_right, pbc=False):
+def run(q, nw, lr, v, ve, w0, b, L, dt, steps, w_left, w_right, zero_prob_left=False, zero_prob_right=False, pbc=False):
     """
-    Init is 1 inside the interval w_left <= w <= w_right and 0 outside of it
+    Numerically solve the 1d Fokker-Planck equation using the fipy package
 
-    zero_prob_left: Dirichlet boundary condition on the left end of the interval, with p(left_end) = 0
+    nw: number of numerical cells
+    lr: learning rate
+    v: variance of the x variable
+    ve: variance of the noise term
+    w0: fixed, free parameter
+    b: batch size
+    dt: time step size
+    steps: number of time steps
+    w_left: left end of the interval over which w isn't initially zero
+    w_right: right end of the inverval over which w isn't initially zero
+    zero_prob_left: if True, zero probability density on the left boundary, if False, zero derivative
+    zero_prob_right: same as above, on the right boundary
+    pbc: whether to use periodic boundary conditions
+
+    NOTE: I removed the L parameter
     """
     
     convection, d2 = get_coeffs(q)
@@ -41,6 +64,9 @@ def run(q, nw, lr, v, ve, w0, b, L, dt, steps, w_left, w_right, zero_prob_left, 
     w = mesh.cellCenters[0]
 
     def creneau(w, left, right):
+        """
+        Return 0 if w < left or w > right, return a constant value otherwise
+        """
         k = 1./(2.*(right-left))
         return np.where(w < left, -k, k) + np.where(w > right, -k, k)
     
